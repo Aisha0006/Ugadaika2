@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐾 Угадай животное</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        :root {
+            --primary: #4a90e2;
+            --success: #2ed573;
+            --danger: #ff4757;
+            --bg-color: #d7dffb;
+        }
+
+        body {
+            font-family: 'Comfortaa', cursive;
+            background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 100%);
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            color: #2c3e50;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* --- АНИМАЦИИ --- */
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: scale(0.3); }
+            50% { opacity: 1; transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-8px); }
+            80% { transform: translateX(8px); }
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .screen {
+            display: none;
+            padding: 15px;
+            width: 100%;
+            max-width: 800px;
+            margin: auto;
+            box-sizing: border-box;
+            flex-grow: 1;
+        }
+
+        .active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center;
+            animation: fadeUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        button {
+            padding: 14px 28px;
+            margin: 8px;
+            font-size: 18px;
+            font-weight: 900;
+            border-radius: 20px;
+            cursor: pointer;
+            border: none;
+            background: #4a90e2;
+            color: white;
+            box-shadow: 0 6px 0 #2e66a3;
+            transition: 0.1s;
+            text-transform: uppercase;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #2e66a3;
+        }
+
+        #soundBtn {
+            background: #ff7f50;
+            box-shadow: 0 6px 0 #d35400;
+            width: 50%;
+            height: 40px;
+            max-width: 320px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr; 
+            align-items: center;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.05);
+            font-weight: 900;
+            width: 100%;
+            max-width: 550px;
+            box-sizing: border-box;
+        }
+
+        .level-badge {
+            background: #f1c40f;
+            padding: 6px 12px;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        #timer { 
+            color: var(--danger); 
+            background: #fff5f5;
+            padding: 5px 15px;
+            border-radius: 15px;
+            border: 2px solid #ffebeb;
+            font-size: 1rem;
+            font-weight: 900;
+        }
+
+        .grid {
+            display: grid;
+            gap: 15px;
+            margin: 0 auto 30px auto;
+            width: 100%;
+            max-width: 550px;
+            justify-content: center;
+        }
+
+        .card {
+            background: white;
+            border: 4px solid #f0f0f0;
+            border-radius: 25px;
+            padding: 0;
+            cursor: pointer;
+            box-shadow: 0 10px 0 #e0e0e0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1; 
+            overflow: hidden;
+        }
+
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; 
+            display: block;
+        }
+
+        .card.wrong {
+            border-color: var(--danger) !important;
+            animation: shake 0.4s;
+            box-shadow: 0 10px 0 #cf3544;
+        }
+
+        .card.correct {
+            border-color: var(--success) !important;
+            box-shadow: 0 10px 0 #1e9a50;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(44, 62, 80, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-box {
+            background: white;
+            padding: 35px;
+            border-radius: 40px;
+            width: 100%;
+            max-width: 420px;
+            border: 8px solid var(--primary);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="menu" class="screen active">
+    <div style="font-size: 50px; margin-bottom: 10px;">🐾</div>
+    <h1 style="font-size: 3rem; margin: 0;">Угадайка!</h1>
+    <div class="text-6xl mb-0 animate-bounce">🦁</div>
+    <p style="color: #5d6d7e; margin-bottom: 30px; font-size: 1.2rem;">Слушай звук и находи животное!</p>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 w-full max-w-2xl px-4">
+        <div class="bg-white p-4 rounded-3xl shadow-xl text-center">
+            <p class="text-[10px] text-gray-400 uppercase font-black">Рекорд очков</p>
+            <p id="highScore" class="text-2xl font-black text-orange-500">⭐ 0</p>
+        </div>
+        <div class="bg-white p-4 rounded-3xl shadow-xl text-center">
+            <p class="text-[10px] text-gray-400 uppercase font-black">Лучший уровень</p>
+            <p id="highLevel" class="text-2xl font-black text-blue-500">🏆 1</p>
+        </div>
+        <div class="bg-white p-4 rounded-3xl shadow-xl text-center">
+            <p class="text-[10px] text-gray-400 uppercase font-black">Реакция</p>
+            <p id="bestTime" class="text-2xl font-black text-green-500">⚡ --</p>
+        </div>
+    </div>
+    
+    <button id="playBtn" style="width: 250px; font-size: 24px; background: #4a90e2;">ИГРАТЬ</button>
+    <br>
+    <button id="exitBtn" style="background: #95a5a6; box-shadow: 0 6px 0 #7f8c8d; font-size: 14px; padding: 7px;">ВЫХОД</button>
+</div>
+
+<div id="game" class="screen">
+    <div class="flex justify-between w-full max-w-[600px] mb-4">
+        <div id="livesDisplay" class="text-3xl">❤️❤️❤️</div>
+        <button id="pauseBtn" class="bg-white/50 p-2 rounded-xl hover:bg-blue-400 font-bold">⏸</button>
+    </div>
+
+    <div class="stats-bar">
+        <div class="level-side"><span class="level-badge" id="levelLabel">Ур. 1</span></div>
+        <div class="timer-side"><div id="timer">⏱ 00:20</div></div>
+        <div class="score-side"><div id="score">⭐ 0</div></div>
+    </div>
+
+    <button id="soundBtn"><span>🔊 СЛУШАТЬ</span></button>
+    <div id="grid" class="grid"></div>
+    <button id="backBtn" style="width: 30%; background: #95a5a6; box-shadow: 0 6px 0 #7f8c8d; font-size: 14px; margin-top: 10px;">🏠 В меню</button>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-box">
+        <h2 id="modalTitle" style="margin-top: 0; font-size: 2rem;">Пауза</h2>
+        <p id="modalText" style="font-size: 1.3rem; margin-bottom: 25px; white-space: pre-line;"></p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button id="modalOk" style="margin: 0; background-color:#4a90e2;">Дальше!</button>
+            <button id="modalMenu" style="background: #95a5a6; box-shadow: 0 6px 0 #7f8c8d; margin: 0;">Выйти в меню</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ================= ДАННЫЕ С КАТЕГОРИЯМИ ================= */
+const animals = [
+    // Легкие: Домашние животные, насекомые и птицы (Уровни 1-10)
+    {name:"Кошка", img:"fotos/koshka.webp", sound:"sounds/koshka.mp3", cat: "easy"},
+    {name:"Собака", img:"fotos/sobaka.jpg", sound:"sounds/sobaka.mp3", cat: "easy"},
+    {name:"Петух", img:"fotos/petuh.jpg", sound:"sounds/petuha.mp3", cat: "easy"},
+    {name:"Свинья", img:"fotos/svinia.jpg", sound:"sounds/svinia.mp3", cat: "easy"},
+    {name:"Осел", img:"fotos/osel.jpg", sound:"sounds/osel.mp3", cat: "easy"},
+    {name:"Баран", img:"fotos/baran.jpg", sound:"sounds/baran.mp3", cat: "easy"},
+    {name:"Корова", img:"fotos/korova.webp", sound:"sounds/korova.mp3", cat: "easy"},
+    {name:"Пчела", img:"fotos/shmelja.jpeg", sound:"sounds/shmelja.mp3", cat: "easy"},
+    {name:"Гусь", img:"fotos/guse.jpg", sound:"sounds/guse.mp3", cat: "easy"},
+    {name:"Курица", img:"fotos/kuriza.webp", sound:"sounds/kuriza.mp3", cat: "easy"},
+
+    // Средние: Дикие животные и птицы со звуками (Уровни 11-20)
+    {name:"Лев", img:"fotos/lev.jpg", sound:"sounds/lev.mp3", cat: "medium"},
+    {name:"Тигр", img:"fotos/tigr.jpg", sound:"sounds/tigr.mp3", cat: "medium"},
+    {name:"Слон", img:"fotos/slon.avif", sound:"sounds/slon.mp3", cat: "medium"},
+    {name:"Волк", img:"fotos/volk.jpg", sound:"sounds/volk.mp3", cat: "medium"},
+    {name:"Обезьяна", img:"fotos/obeziana.avif", sound:"sounds/obeziana.mp3", cat: "medium"},
+    {name:"Сова", img:"fotos/sova.jpg", sound:"sounds/sova.mp3", cat: "medium"},
+    {name:"Ягуар", img:"fotos/jaguer.jpg", sound:"sounds/jaguer.mp3", cat: "medium"},
+    {name:"Лошадь", img:"fotos/loshad.jpg", sound:"sounds/loshad.mp3", cat: "medium"},
+    {name:"Медведь", img:"fotos/medved.webp", sound:"sounds/medved.mp3", cat: "medium"},
+    {name:"Змея", img:"fotos/smeja.avif", sound:"sounds/smeja.mp3", cat: "medium"},
+
+    // Сложные: Редкие звуки и смесь (Уровни 21-30)
+    {name:"Верблюд", img:"fotos/verblud.webp", sound:"sounds/verblud.mp3", cat: "hard"},
+    {name:"Мышка", img:"fotos/myshka.jpg", sound:"sounds/myshka.mp3", cat: "hard"},
+    {name:"Лягушка", img:"fotos/liagushka.jpg", sound:"sounds/liagushka.mp3", cat: "hard"},
+    {name:"Дельфин", img:"fotos/dolphin.jpg", sound:"sounds/dolphin.mp3", cat: "hard"},
+    {name:"Кит", img:"fotos/kit.avif", sound:"sounds/kita.mp3", cat: "hard"},
+    {name:"Саранча", img:"fotos/sarancha.webp", sound:"sounds/sarancha.mp3", cat: "hard"},
+    {name:"Олень", img:"fotos/olen.jpg", sound:"sounds/olen.mp3", cat: "hard"},
+    {name:"Дятел", img:"fotos/datel.avif", sound:"sounds/datel.mp3", cat: "hard"},
+    {name:"Богомол", img:"fotos/bogomol.jpg", sound:"sounds/bogomol.mp3", cat: "hard"}
+];
+
+/* ================= СОСТОЯНИЕ ================= */
+let score = 0;
+let lives = 3;
+let level = 1;
+const MAX_LEVELS = 30;
+let timeLeft = 25;
+let correctAnimal;
+let currentAudio = null;
+let timerInterval = null;
+let isProcessing = false;
+let isPaused = false;
+let roundStartTime = 0;
+
+// История для предотвращения частых повторов
+// Храним имена последних 5-6 животных, выбранных в качестве правильных
+let recentCorrectAnimals = [];
+
+let highScore = parseInt(localStorage.getItem('guess_highScore')) || 0;
+let highLevel = parseInt(localStorage.getItem('guess_highLevel')) || 1;
+let bestTime = localStorage.getItem('guess_bestTime') ? parseFloat(localStorage.getItem('guess_bestTime')) : null;
+
+const grid = document.getElementById("grid");
+const livesDisplay = document.getElementById("livesDisplay");
+const scoreDiv = document.getElementById("score");
+const levelLabel = document.getElementById("levelLabel");
+const timerDisplay = document.getElementById("timer");
+
+function updateStats(){
+    scoreDiv.textContent = "⭐ " + score;
+    livesDisplay.textContent = "❤️".repeat(lives);
+    levelLabel.textContent = "Ур." + level;
+}
+
+function updateMenuRecords() {
+    document.getElementById("highScore").textContent = "⭐ " + highScore;
+    document.getElementById("highLevel").textContent = "🏆 " + highLevel;
+    document.getElementById("bestTime").textContent = bestTime ? "⚡ " + bestTime + "с" : "⚡ --";
+}
+
+function saveRecords() {
+    if (score > highScore) { highScore = score; localStorage.setItem('guess_highScore', highScore); }
+    if (level > highLevel) { highLevel = level; localStorage.setItem('guess_highLevel', highLevel); }
+}
+
+function showModal(title, text, okLabel, okAction){
+    document.getElementById("modalTitle").textContent = title;
+    document.getElementById("modalText").textContent = text;
+    document.getElementById("modalOk").textContent = okLabel;
+    document.getElementById("modal").classList.add("active");
+    
+    document.getElementById("modalOk").onclick = () => {
+        document.getElementById("modal").classList.remove("active");
+        if(okAction) okAction();
+    };
+    document.getElementById("modalMenu").onclick = exitToMenu;
+}
+
+function startTimer() {
+    stopTimer();
+    timerInterval = setInterval(() => {
+        if(!isPaused) {
+            timeLeft--;
+            let min = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+            let sec = String(timeLeft % 60).padStart(2, '0');
+            timerDisplay.textContent = `⏱ ${min}:${sec}`;
+            if (timeLeft <= 0) {
+                stopTimer();
+                saveRecords();
+                showModal("Время вышло!", `Твой счет: ${score}`, "Заново", restartGame);
+            }
+        }
+    }, 1000);
+}
+
+function stopTimer() { if(timerInterval) clearInterval(timerInterval); }
+
+function togglePause() {
+    if(isProcessing || isPaused) return; 
+    isPaused = true;
+    if(currentAudio) currentAudio.pause();
+    showModal("Пауза", "Игра остановлена. Готов продолжить?", "Продолжить", () => { isPaused = false; });
+}
+
+function playSound(){
+    if(!correctAnimal || isPaused) return;
+    if(currentAudio){ currentAudio.pause(); currentAudio.currentTime = 0; }
+    currentAudio = new Audio(correctAnimal.sound);
+    currentAudio.play().catch(() => {});
+}
+
+function newRound(){
+    isProcessing = false;
+    isPaused = false;
+    
+    // Логика количества карточек (Сброс каждые 10 уровней)
+    let cycleLevel = (level - 1) % 10 + 1;
+    let cardCount;
+    if (cycleLevel <= 3) {
+        cardCount = 2;
+        grid.style.gridTemplateColumns = "repeat(2, 1fr)";
+    } else if (cycleLevel <= 7) {
+        cardCount = 4;
+        grid.style.gridTemplateColumns = "repeat(2, 1fr)";
+    } else {
+        cardCount = 9;
+        grid.style.gridTemplateColumns = "repeat(3, 1fr)";
+    }
+
+    // Выбор пула животных по категории
+    let pool;
+    if (level <= 10) pool = animals.filter(a => a.cat === "easy");
+    else if (level <= 20) pool = animals.filter(a => a.cat === "medium");
+    else pool = animals.filter(a => a.cat === "hard" || a.cat === "medium");
+
+    // --- УЛУЧШЕННАЯ ЛОГИКА РАНДОМА (БЕЗ ПОВТОРОВ) ---
+    // Исключаем из выбора в качестве ПРАВИЛЬНОГО тех, кто был недавно
+    // Оставляем хотя бы 2 варианта в пуле для выбора правильного, даже если история длинная
+    let availableForCorrect = pool.filter(a => !recentCorrectAnimals.includes(a.name));
+    if (availableForCorrect.length < 2) availableForCorrect = pool; 
+
+    // Выбираем правильное животное
+    correctAnimal = availableForCorrect[Math.floor(Math.random() * availableForCorrect.length)];
+    
+    // Обновляем историю (не более 3 повторений за 3 уровня - значит в истории держим столько имен, 
+    // чтобы исключить частые встречи одного и того же)
+    recentCorrectAnimals.push(correctAnimal.name);
+    if (recentCorrectAnimals.length > 6) {
+        recentCorrectAnimals.shift();
+    }
+
+    // Собираем карточки для раунда
+    let roundAnimals = [correctAnimal];
+    let otherOptions = pool.filter(a => a.name !== correctAnimal.name).sort(() => Math.random() - 0.5);
+    
+    // Добавляем остальные карточки
+    for (let i = 0; i < cardCount - 1; i++) {
+        if (otherOptions[i]) {
+            roundAnimals.push(otherOptions[i]);
+        } else {
+            // Если в категории кончились животные, берем из общего списка
+            let fallback = animals.filter(a => !roundAnimals.includes(a)).sort(() => Math.random() - 0.5);
+            roundAnimals.push(fallback[0]);
+        }
+    }
+
+    // Перемешиваем карточки на столе
+    roundAnimals.sort(() => Math.random() - 0.5);
+
+    grid.innerHTML = "";
+    roundAnimals.forEach((a, index) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.style.animationDelay = (index * 0.05) + "s";
+        const img = document.createElement("img");
+        img.src = a.img;
+        card.appendChild(img);
+        card.onclick = () => checkAnswer(a, card);
+        grid.appendChild(card);
+    });
+    
+    setTimeout(() => { playSound(); roundStartTime = Date.now(); }, 600);
+}
+
+function checkAnswer(animal, cardElement){
+    if(isProcessing || isPaused) return;
+
+    if(animal.name === correctAnimal.name){
+        isProcessing = true;
+        cardElement.classList.add('correct');
+        
+        const reactionTime = parseFloat(((Date.now() - roundStartTime) / 1000).toFixed(2));
+        if (bestTime === null || reactionTime < bestTime) {
+            bestTime = reactionTime;
+            localStorage.setItem('guess_bestTime', bestTime);
+        }
+
+        score += 10;
+        
+        // Каждые 30 очков - переход уровня
+        if (score > 0 && score % 30 === 0) {
+            if (level >= MAX_LEVELS) {
+                saveRecords();
+                showModal("ГРАНД-ПОБЕДА!", `Ты прошел все ${MAX_LEVELS} уровней!\nСчет: ${score}`, "Еще раз", restartGame);
+                return;
+            }
+            
+            level++;
+            // Обновление жизней на каждом втором уровне
+            if (level % 2 === 0 && lives < 5) lives++; 
+            
+            updateStats();
+            setTimeout(() => {
+                showModal("Уровень пройден!", `Переходим на уровень ${level}.\nЖизни обновлены!`, "Поехали!", () => {
+                    timeLeft = 25 + Math.floor(level/2); // Увеличиваем время с уровнем
+                    startTimer();
+                    newRound();
+                });
+            }, 500);
+        } else {
+            updateStats();
+            saveRecords();
+            setTimeout(newRound, 600);
+        }
+    } else {
+        cardElement.classList.add('wrong');
+        lives--;
+        updateStats();
+        if(lives <= 0){
+            stopTimer();
+            saveRecords();
+            setTimeout(() => {
+                showModal("Игра окончена", `Ты дошел до ${level} уровня.\nСчет: ${score}`, "Заново", restartGame);
+            }, 500);
+        }
+    }
+}
+
+function restartGame(){
+    score = 0; lives = 3; level = 1; timeLeft = 25; isPaused = false;
+    recentCorrectAnimals = []; // Сброс истории при новой игре
+    updateStats(); startTimer(); newRound();
+}
+
+function exitToMenu(){
+    stopTimer(); if(currentAudio) currentAudio.pause();
+    isPaused = false; saveRecords(); updateMenuRecords();
+    document.getElementById("modal").classList.remove("active");
+    document.getElementById("game").classList.remove("active");
+    document.getElementById("menu").classList.add("active");
+}
+
+document.getElementById("playBtn").onclick = () => {
+    document.getElementById("menu").classList.remove("active");
+    document.getElementById("game").classList.add("active");
+    restartGame();
+};
+
+document.getElementById("exitBtn").onclick = () => { if(confirm("Выйти из игры?")) window.close(); };
+document.getElementById("backBtn").onclick = exitToMenu;
+document.getElementById("soundBtn").onclick = playSound;
+document.getElementById("pauseBtn").onclick = togglePause;
+
+updateMenuRecords();
+</script>
+</body>
+</html>
